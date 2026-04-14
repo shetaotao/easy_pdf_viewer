@@ -1,0 +1,10 @@
+{
+  "module": {
+    "name": "easy_pdf_viewer",
+    "type": "har",
+    "deviceTypes": [
+      "default",
+      "tablet"
+    ]
+  }
+}
