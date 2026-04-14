@@ -46,7 +46,7 @@ class _MyAppState extends State<MyApp> {
       document = await PDFDocument.fromAsset('assets/sample2.pdf');
     } else if (value == 2) {
       document = await PDFDocument.fromURL(
-        "https://www.africau.edu/images/default/sample.pdf",
+        "https://www.orimi.com/pdf-test.pdf",
 
         /* cacheManager: CacheManager(
           Config(

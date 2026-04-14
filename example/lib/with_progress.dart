@@ -32,7 +32,8 @@ class _WithProgressState extends State<WithProgress> {
     await DefaultCacheManager().emptyCache();
 
     PDFDocument.fromURLWithDownloadProgress(
-      'https://www.africau.edu/images/default/sample.pdf',
+      // "https://pdfkit.org/docs/guide.pdf";
+      'https://pdfkit.org/docs/guide.pdf',
       downloadProgress: (downloadProgress) => setState(() {
         this.downloadProgress = downloadProgress;
       }),
@@ -71,7 +72,7 @@ class _WithProgressState extends State<WithProgress> {
       document = await PDFDocument.fromAsset('assets/sample2.pdf');
     } else if (value == 2) {
       document = await PDFDocument.fromURL(
-        "https://www.africau.edu/images/default/sample.pdf",
+        "https://pdfkit.org/docs/guide.pdf",
 
         /* cacheManager: CacheManager(
           Config(
