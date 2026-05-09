@@ -26,7 +26,6 @@ import { fileIo } from '@kit.CoreFileKit';
 import { image } from '@kit.ImageKit';
 import { pdfService } from '@kit.PDFKit';
 import { cryptoFramework } from '@kit.CryptoArchitectureKit';
-import { display } from '@kit.ArkUI';
 
 const TAG: string = 'EasyPdfViewerPlugin';
 const CHANNEL_NAME: string = 'easy_pdf_viewer_plugin';
@@ -37,16 +36,31 @@ export default class EasyPdfViewerPlugin implements FlutterPlugin, MethodCallHan
   private channel: MethodChannel | null = null;
   private applicationContext: common.Context | null = null;
 
+  /**
+   * 获取插件类的唯一标识名称。
+   *
+   * @returns 插件类名称字符串
+   */
   getUniqueClassName(): string {
     return 'EasyPdfViewerPlugin';
   }
 
+  /**
+   * 插件附着到 Flutter 引擎时的回调，初始化 MethodChannel。
+   *
+   * @param binding - Flutter 插件绑定对象，提供 BinaryMessenger 和 ApplicationContext
+   */
   onAttachedToEngine(binding: FlutterPluginBinding): void {
     this.applicationContext = binding.getApplicationContext();
     this.channel = new MethodChannel(binding.getBinaryMessenger(), CHANNEL_NAME);
     this.channel.setMethodCallHandler(this);
   }
 
+  /**
+   * 插件从 Flutter 引擎分离时的回调，释放 MethodChannel 资源。
+   *
+   * @param binding - Flutter 插件绑定对象
+   */
   onDetachedFromEngine(binding: FlutterPluginBinding): void {
     if (this.channel !== null) {
       this.channel.setMethodCallHandler(null);
@@ -55,6 +69,12 @@ export default class EasyPdfViewerPlugin implements FlutterPlugin, MethodCallHan
     this.applicationContext = null;
   }
 
+  /**
+   * 处理来自 Flutter 层的方法调用请求。
+   *
+   * @param call - 方法调用对象，包含方法名和参数
+   * @param result - 方法调用结果回调，用于返回成功/失败结果
+   */
   onMethodCall(call: MethodCall, result: MethodResult): void {
     if (call.method === 'getNumberOfPages') {
       void this.handleGetNumberOfPages(call, result);
@@ -111,8 +131,12 @@ export default class EasyPdfViewerPlugin implements FlutterPlugin, MethodCallHan
         const pageNumber: number = this.normalizePageNumber(requestedPageNumber, pageCount);
         const page: pdfService.PdfPage = document.getPage(pageNumber - 1);
         const pixelMap: image.PixelMap = this.renderPagePixelMap(page);
-        const previewPath: string = await this.writePreviewToCache(pixelMap, filePath, pageNumber);
-        result.success(previewPath);
+        try {
+          const previewPath: string = await this.writePreviewToCache(pixelMap, filePath, pageNumber);
+          result.success(previewPath);
+        } finally {
+          pixelMap.release();
+        }
       } finally {
         document.releaseDocument();
       }
@@ -135,8 +159,9 @@ export default class EasyPdfViewerPlugin implements FlutterPlugin, MethodCallHan
   private renderPagePixelMap(page: pdfService.PdfPage): image.PixelMap {
     const pageWidthPt: number = page.getWidth();
     const pageHeightPt: number = page.getHeight();
-    const displayInfo = display.getDefaultDisplaySync();
-    const pageWidthPx: number = displayInfo.width;
+    // Use a fixed high resolution consistent with Android (2048px) to ensure
+    // rendering quality is not degraded on small-screen devices.
+    const pageWidthPx: number = 2048;
     const docRatio: number = pageWidthPt / pageHeightPt;
     const pageHeightPx: number = pageWidthPx / docRatio;
     const matrix: pdfService.PdfMatrix = new pdfService.PdfMatrix();
@@ -149,15 +174,19 @@ export default class EasyPdfViewerPlugin implements FlutterPlugin, MethodCallHan
   private async writePreviewToCache(pixelMap: image.PixelMap, filePath: string, pageNumber: number): Promise<string> {
     const fileHash: string = this.calculateFileHash(filePath);
     const previewPath: string = `${this.getPluginCacheDir()}/${this.getCacheFileName(filePath, pageNumber, fileHash)}`;
-    const file = fileIo.openSync(
+    const file: fileIo.File = fileIo.openSync(
       previewPath,
       fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC,
     );
     try {
       const packer: image.ImagePacker = image.createImagePacker();
-      const options: image.PackingOption = { format: 'image/png', quality: 100 };
-      await packer.packToFile(pixelMap, file.fd, options);
-      return previewPath;
+      try {
+        const options: image.PackingOption = { format: 'image/png', quality: 100 };
+        await packer.packToFile(pixelMap, file.fd, options);
+        return previewPath;
+      } finally {
+        packer.release();
+      }
     } finally {
       fileIo.closeSync(file.fd);
     }
@@ -165,14 +194,27 @@ export default class EasyPdfViewerPlugin implements FlutterPlugin, MethodCallHan
 
   private calculateFileHash(filePath: string): string {
     try {
-      const file = fileIo.openSync(filePath, fileIo.OpenMode.READ_ONLY);
+      const file: fileIo.File = fileIo.openSync(filePath, fileIo.OpenMode.READ_ONLY);
       try {
-        const stat = fileIo.statSync(file.fd);
-        const buffer = new ArrayBuffer(stat.size);
-        fileIo.readSync(file.fd, buffer);
-        const md = cryptoFramework.createMd('MD5');
-        md.updateSync({ data: new Uint8Array(buffer) });
-        const hashResult = md.digestSync();
+        const stat: fileIo.Stat = fileIo.statSync(file.fd);
+        const md: cryptoFramework.Md = cryptoFramework.createMd('MD5');
+        // Stream the file in chunks to avoid loading large files into memory at once.
+        const chunkSize: number = 1024 * 1024; // 1MB
+        let remaining: number = stat.size;
+        const chunk: ArrayBuffer = new ArrayBuffer(Math.min(chunkSize, remaining));
+        while (remaining > 0) {
+          const bytesToRead: number = Math.min(chunkSize, remaining);
+          const bytesRead: number = fileIo.readSync(file.fd, chunk, { length: bytesToRead });
+          if (bytesRead <= 0) {
+            break;
+          }
+          const data: Uint8Array = bytesRead === chunk.byteLength
+            ? new Uint8Array(chunk)
+            : new Uint8Array(chunk, 0, bytesRead);
+          md.updateSync({ data });
+          remaining -= bytesRead;
+        }
+        const hashResult: cryptoFramework.DataResult = md.digestSync();
         return this.bufferToHex(hashResult.data);
       } finally {
         fileIo.closeSync(file.fd);
@@ -181,7 +223,7 @@ export default class EasyPdfViewerPlugin implements FlutterPlugin, MethodCallHan
       console.error(TAG, `Failed to calculate file hash: ${this.toErrorMessage(error)}`);
       // Fallback to using file modification time as hash
       try {
-        const stat = fileIo.statSync(filePath);
+        const stat: fileIo.Stat = fileIo.statSync(filePath);
         return String(stat.mtime);
       } catch {
         return '0';
@@ -198,9 +240,28 @@ export default class EasyPdfViewerPlugin implements FlutterPlugin, MethodCallHan
   private clearCacheDirInternal(): void {
     const cacheRoot: string = this.getCacheRootPath();
     if (fileIo.accessSync(cacheRoot)) {
-      fileIo.rmdirSync(cacheRoot);
+      // Recursively delete directory contents before removing the directory itself,
+      // because rmdirSync fails on non-empty directories.
+      this.removeDirRecursive(cacheRoot);
     }
     fileIo.mkdirSync(cacheRoot);
+  }
+
+  private removeDirRecursive(dirPath: string): void {
+    if (!fileIo.accessSync(dirPath)) {
+      return;
+    }
+    const stat: fileIo.Stat = fileIo.statSync(dirPath);
+    if (!stat.isDirectory()) {
+      fileIo.unlinkSync(dirPath);
+      return;
+    }
+    const names: string[] = fileIo.listFileSync(dirPath);
+    for (let i = 0; i < names.length; i++) {
+      const childPath: string = `${dirPath}/${names[i]}`;
+      this.removeDirRecursive(childPath);
+    }
+    fileIo.rmdirSync(dirPath);
   }
 
   private getPluginCacheDir(): string {

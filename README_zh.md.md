@@ -24,13 +24,13 @@ dependencies:
 flutter pub get
 ```
 
-> TAG 命名规则：`原库版本-ohos-版本号-betax`，不同 TAG 之间的变更详见 CHANGELOG.md。
+> TAG 命名规则：`原库版本-ohos-版本号`，不同 TAG 之间的变更详见 CHANGELOG.md。
 
-| Flutter 框架版本 | TAG 名称 | 备注 |
-| ---------------- | -------- | ---- |
-| 3.22.1-ohos-1.1.0 | 1.0.8-ohos-1.0.0 | |
-| 3.27.5-ohos-1.0.4 | 1.0.8-ohos-1.0.0 | |
-| 3.35.8-ohos-0.0.2 | 1.0.8-ohos-1.0.0 | |
+| Flutter 框架版本 | TAG 名称 |
+| ---------------- | -------- |
+| 3.22.1-ohos-1.1.0 | 1.0.8-ohos-1.0.0 |
+| 3.27.5-ohos-1.0.4 | 1.0.8-ohos-1.0.0 |
+| 3.35.8-ohos-0.0.2 | 1.0.8-ohos-1.0.0 |
 
 ## 约束与限制
 
@@ -38,9 +38,9 @@ flutter pub get
 
 在以下版本中已测试通过：
 
-1. Flutter: 3.22.1-ohos-1.1.0; SDK: 5.0.0(12); IDE: DevEco Studio: 6.1.0.830; ROM: 6.0.0.130 SP25;
-2. Flutter: 3.27.5-ohos-1.0.4; SDK: 5.0.0(12); IDE: DevEco Studio: 6.1.0.830; ROM: 6.0.0.130 SP25;
-3. Flutter: 3.35.8-ohos-0.0.2; SDK: 5.0.0(12); IDE: DevEco Studio: 6.1.0.830; ROM: 6.0.0.130 SP25;
+1. Flutter: 3.22.1-ohos-1.1.0; SDK: 5.0.0(12); IDE: DevEco Studio: 6.1.0.830; ROM: 6.1.0.117 SP6;
+2. Flutter: 3.27.5-ohos-1.0.4; SDK: 5.0.0(12); IDE: DevEco Studio: 6.1.0.830; ROM: 6.1.0.117 SP6;
+3. Flutter: 3.35.8-ohos-0.0.2; SDK: 5.0.0(12); IDE: DevEco Studio: 6.1.0.830; ROM: 6.1.0.117 SP6;
 
 ### 权限要求
 
@@ -263,9 +263,7 @@ await PDFDocument.clearPreviewCache();
 |     |---- test      # 单元测试文件
 |     |---- CHANGELOG.md              # 更新日志
 |     |---- LICENSE                   # 开源协议
-|     |---- README.OpenHarmony.md     # 英文说明文档
-|     |---- README.OpenHarmony_CN.md  # 中文说明文档
-|     |---- README.md                 # 原库说明文档
+|     |---- README.md                 # 说明文档
 |     |---- pubspec.yaml              # 配置文件
 ```
 

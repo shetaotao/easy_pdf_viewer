@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:easy_pdf_viewer_example/with_progress.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_pdf_viewer/easy_pdf_viewer.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 void main() => runApp(App());
 
@@ -56,10 +60,24 @@ class _MyAppState extends State<MyApp> {
           ),
         ), */
       );
+    } else if (value == 4) {
+      // Load from File demo
+      document = await loadFromFile();
     } else {
       document = await PDFDocument.fromAsset('assets/sample.pdf');
     }
     setState(() => _isLoading = false);
+  }
+
+  Future<PDFDocument> loadFromFile() async {
+    // Copy asset to temp file and load from file
+    final tempDir = await getTemporaryDirectory();
+    final tempFile = File('${tempDir.path}/sample_from_file.pdf');
+    
+    final byteData = await rootBundle.load('assets/sample.pdf');
+    await tempFile.writeAsBytes(byteData.buffer.asUint8List());
+    
+    return await PDFDocument.fromFile(tempFile);
   }
 
   @override
@@ -88,6 +106,12 @@ class _MyAppState extends State<MyApp> {
               },
             ),
             ListTile(
+              title: Text('Load from File'),
+              onTap: () {
+                changePDF(4);
+              },
+            ),
+            ListTile(
               title: Text('With Progress'),
               onTap: () {
                 Navigator.push(
@@ -95,6 +119,16 @@ class _MyAppState extends State<MyApp> {
                   MaterialPageRoute(
                     builder: (context) => WithProgress(),
                   ),
+                );
+              },
+            ),
+            ListTile(
+              title: Text('Clear Preview Cache'),
+              onTap: () async {
+                Navigator.of(context).pop();
+                await PDFDocument.clearPreviewCache();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Preview cache cleared!')),
                 );
               },
             ),
