@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:easy_pdf_viewer/easy_pdf_viewer.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:path_provider/path_provider.dart';
 
 class WithProgress extends StatefulWidget {
   WithProgress({Key? key}) : super(key: key);
@@ -66,6 +70,17 @@ class _WithProgressState extends State<WithProgress> {
     );
   }
 
+  Future<PDFDocument> loadFromFile() async {
+    // Copy asset to temp file and load from file
+    final tempDir = await getTemporaryDirectory();
+    final tempFile = File('${tempDir.path}/sample_from_file.pdf');
+
+    final byteData = await rootBundle.load('assets/sample.pdf');
+    await tempFile.writeAsBytes(byteData.buffer.asUint8List());
+
+    return await PDFDocument.fromFile(tempFile);
+  }
+
   changePDF(value) async {
     setState(() => _isLoading = true);
     if (value == 1) {
@@ -82,6 +97,9 @@ class _WithProgressState extends State<WithProgress> {
           ),
         ), */
       );
+    } else if (value == 4) {
+      // Load from File demo
+      document = await loadFromFile();
     } else {
       document = await PDFDocument.fromAsset('assets/sample.pdf');
     }
@@ -114,6 +132,12 @@ class _WithProgressState extends State<WithProgress> {
               },
             ),
             ListTile(
+              title: Text('Load from File'),
+              onTap: () {
+                changePDF(4);
+              },
+            ),
+            ListTile(
               title: Text('With Progress'),
               onTap: () {
                 Navigator.push(
@@ -121,6 +145,16 @@ class _WithProgressState extends State<WithProgress> {
                   MaterialPageRoute(
                     builder: (context) => WithProgress(),
                   ),
+                );
+              },
+            ),
+            ListTile(
+              title: Text('Clear Preview Cache'),
+              onTap: () async {
+                Navigator.of(context).pop();
+                await PDFDocument.clearPreviewCache();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Preview cache cleared!')),
                 );
               },
             ),
